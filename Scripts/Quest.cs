@@ -10,6 +10,7 @@ using Boxxen.Quests.Rewards;
 namespace Boxxen.Quests {
 	public enum QuestType {
 		destination,
+		fetch,
 		multi
 	}
 
@@ -56,6 +57,9 @@ namespace Boxxen.Quests {
 		private Timer _timer = null;
 		private float _timeLimit = -1;
 		private float _timeCurrent = -1;
+
+		private List<QuestItem> _itemsToFetch = new List<QuestItem>();
+		private List<QuestItem> _itemsFetched = new List<QuestItem>();
 		// ****
 
 		public Quest (string name, string description, QuestType type) {
@@ -75,6 +79,9 @@ namespace Boxxen.Quests {
 				}
 				case QuestType.multi: {
 					return "Multi";
+				}
+				case QuestType.fetch: {
+					return "Fetch";
 				}
 				default: {
 					return "Unknown";
@@ -268,6 +275,39 @@ namespace Boxxen.Quests {
 					}
 				}
 			}
+		}
+
+		public void AddItemToFetch (QuestItem item) {
+			_itemsToFetch.Add(item);
+		}
+
+		public void RemoveItemToFetch (QuestItem item) {
+			_itemsToFetch.Remove(item);
+		}
+
+		public List<QuestItem> GetItemsToFetch () {
+			return _itemsToFetch;
+		}
+
+		// Returns true if item causes quest to be completed
+		public bool ItemFetched (QuestItem item) {
+			List<QuestItem> hasFetched = _itemsFetched.FindAll(_item => _item.name == item.name);
+			List<QuestItem> toFetch = _itemsToFetch.FindAll(_item => _item.name == item.name);
+
+			if (toFetch.Count == 0 || hasFetched.Count < toFetch.Count) {
+				hasFetched.Add(item);
+			}
+
+			if (toFetch.Count == hasFetched.Count) {
+				CompleteQuest();
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		public List<QuestItem> ItemsFetched () {
+			return _itemsFetched;
 		}
 	}
 }

@@ -85,4 +85,10 @@ public class QuestManager : MonoBehaviour {
 			quest.CompleteQuest();
 		}
 	}
+
+	public void ItemFetched (QuestItem item) {
+		foreach (Quest quest in quests) {
+			quest.ItemFetched(item);
+		}
+	}
 }
