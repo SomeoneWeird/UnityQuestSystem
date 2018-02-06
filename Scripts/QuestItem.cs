@@ -1,5 +1,5 @@
-﻿namespace Boxxen.Quests.Rewards {
+﻿namespace Boxxen.Quests {
 	public interface QuestItem {
-		string name { get; }
+		string id { get; }
 	}
 }

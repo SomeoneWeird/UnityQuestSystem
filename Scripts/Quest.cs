@@ -5,13 +5,13 @@ using System.Timers;
 using UnityEngine;
 
 using Boxxen.Quests;
-using Boxxen.Quests.Rewards;
 
 namespace Boxxen.Quests {
 	public enum QuestType {
+		none,
 		destination,
 		fetch,
-		multi
+		nested
 	}
 
 	public enum QuestStatus {
@@ -21,20 +21,24 @@ namespace Boxxen.Quests {
 		failed
 	}
 
-	public enum MultiQuestType {
+	public enum NestedQuestType {
 		sequential,
 		parallel
 	}
 
-    public class Quest : QuestInterface {
+    public class Quest {
         public delegate void OnStatusChangeHandler(QuestStatus newStatus);
 		public event OnStatusChangeHandler OnStatusChange;
 
 		public delegate void OnChildStatusChangeHandler (Quest childQuest, QuestStatus newStatus);
 		public event OnChildStatusChangeHandler OnChildStatusChange;
 
+		public delegate void OnCompleteHandler();
+		public event OnCompleteHandler OnComplete;
+		public delegate void OnFailureHandler();
+		public event OnFailureHandler OnFailure;
+
 		private string _name;
-		private string _description;
 		private QuestStatus _status = QuestStatus.notStarted;
 
 		private QuestType _type;
@@ -44,11 +48,10 @@ namespace Boxxen.Quests {
 		private Quest _parentQuest;
 
 		public string name { get { return _name; } }
-		public string description { get { return _description; } }
 
-		// **** Multi-quest variables
+		// **** Nested-quest variables
 		private List<Quest> _childQuests = new List<Quest>();
-		private MultiQuestType _childQuestType = MultiQuestType.sequential;
+		private NestedQuestType _childQuestType = NestedQuestType.sequential;
 		// ****
 
 		// **** Quest-type-specific variables here
@@ -62,9 +65,8 @@ namespace Boxxen.Quests {
 		private List<QuestItem> _itemsFetched = new List<QuestItem>();
 		// ****
 
-		public Quest (string name, string description, QuestType type) {
+		public Quest (string name, QuestType type) {
 			_name = name;
-			_description = description;
 			_type = type;
 		}
 
@@ -74,11 +76,14 @@ namespace Boxxen.Quests {
 
 		public string QuestTypeString () {
 			switch(_type) {
+				case QuestType.none: {
+					return "None";
+				}
 				case QuestType.destination: {
 					return "Destination";
 				}
-				case QuestType.multi: {
-					return "Multi";
+				case QuestType.nested: {
+					return "Nested";
 				}
 				case QuestType.fetch: {
 					return "Fetch";
@@ -93,7 +98,7 @@ namespace Boxxen.Quests {
 			return _status;
 		}
 
-		public void SetStatus(QuestStatus status, bool doNotNotifyParent = false) {
+		public void SetStatus(QuestStatus status) {
 			_status = status;
 			if (OnStatusChange != null) {
 				OnStatusChange(status);
@@ -126,18 +131,15 @@ namespace Boxxen.Quests {
 			
 		}
 
-		public void StartTimer () {
+		public void StopTimer () {
+			_timer.Stop();
+		}
+
+		private void DestroyTimer () {
 			if (_timer != null) {
 				_timer.Start();
 				return;
 			}
-			_timer = new Timer(1000);
-			_timer.Elapsed += this.timerSecondPassed;
-			_timer.Start();
-		}
-
-		public void StopTimer () {
-			_timer.Stop();
 		}
 
 		public void ResetTimer () {
@@ -156,7 +158,7 @@ namespace Boxxen.Quests {
 
 			// Needs to run on the main thread
 			UnityMainThreadDispatcher.Instance().Enqueue(() => {
-				SetStatus(QuestStatus.failed);
+				FailQuest();
 			});
 		}
 
@@ -169,12 +171,23 @@ namespace Boxxen.Quests {
 		}
 
 		public void CompleteQuest () {
-			if (_timer != null) {
-				StopTimer();
-				_timer = null;
-			}
+			DestroyTimer();
 
 			SetStatus(QuestStatus.completed);
+
+			if (OnComplete != null) {
+				OnComplete();
+			}
+		}
+
+		public void FailQuest () {
+			DestroyTimer();
+
+			SetStatus(QuestStatus.failed);
+
+			if (OnFailure != null) {
+				OnFailure();
+			}
 		}
 
 		private void SetParentQuest (Quest quest) {
@@ -209,7 +222,7 @@ namespace Boxxen.Quests {
 			return _childQuests;
 		}
 
-		public void SetMultiQuestType (MultiQuestType type) {
+		public void SetNestedQuestType (NestedQuestType type) {
 			_childQuestType = type;
 		}
 
@@ -223,12 +236,10 @@ namespace Boxxen.Quests {
 			if (newStatus == QuestStatus.failed) {
 				// Well, we failed, so fail all quests and the parent
 				foreach(Quest quest in _childQuests) {
-					quest.SetStatus(QuestStatus.failed, true);
+					quest.FailQuest();
 				}
 				
-				// Do not pass true, so we notify our parent
-				// if we're also a child quest.
-				SetStatus(QuestStatus.failed);
+				FailQuest();
 
 				return;
 			}
@@ -244,7 +255,7 @@ namespace Boxxen.Quests {
 				return;
 			}
 
-			if (_childQuestType == MultiQuestType.sequential) {
+			if (_childQuestType == NestedQuestType.sequential) {
 				for (int i = 0; i < _childQuests.Count; i++) {
 					Quest quest = _childQuests[i];
 
@@ -264,12 +275,19 @@ namespace Boxxen.Quests {
 
 		public void Start () {
 			SetStatus(QuestStatus.inProgress);
+
+			if (HasTimeLimit()) {
+				DestroyTimer();
+				_timer = new Timer(1000);
+				_timer.Elapsed += this.timerSecondPassed;
+				_timer.Start();
+			}
 			
-			if (_type == QuestType.multi) {
-				if (_childQuestType == MultiQuestType.sequential) {
+			if (_type == QuestType.nested) {
+				if (_childQuestType == NestedQuestType.sequential) {
 					// Just start the first quest
 					_childQuests[0].Start();
-				} else if (_childQuestType == MultiQuestType.parallel) {
+				} else if (_childQuestType == NestedQuestType.parallel) {
 					foreach(Quest quest in _childQuests) {
 						quest.Start();
 					}
@@ -289,10 +307,9 @@ namespace Boxxen.Quests {
 			return _itemsToFetch;
 		}
 
-		// Returns true if item causes quest to be completed
-		public bool ItemFetched (QuestItem item) {
-			List<QuestItem> hasFetched = _itemsFetched.FindAll(_item => _item.name == item.name);
-			List<QuestItem> toFetch = _itemsToFetch.FindAll(_item => _item.name == item.name);
+		public void ItemFetched (QuestItem item) {
+			List<QuestItem> hasFetched = _itemsFetched.FindAll(_item => _item.id == item.id);
+			List<QuestItem> toFetch = _itemsToFetch.FindAll(_item => _item.id == item.id);
 
 			if (toFetch.Count == 0 || hasFetched.Count < toFetch.Count) {
 				hasFetched.Add(item);
@@ -300,9 +317,6 @@ namespace Boxxen.Quests {
 
 			if (toFetch.Count == hasFetched.Count) {
 				CompleteQuest();
-				return true;
-			} else {
-				return false;
 			}
 		}
 

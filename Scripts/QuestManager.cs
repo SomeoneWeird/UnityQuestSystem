@@ -3,13 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Boxxen.Quests;
-using Boxxen.Quests.Rewards;
 
 public class QuestManager : MonoBehaviour {
     public delegate void OnNewQuestHandler(Quest quest);
 	public event OnNewQuestHandler OnNewQuest;
+
 	public delegate void OnQuestStatusChangeHandler(Quest quest, QuestStatus newStatus);
 	public event OnQuestStatusChangeHandler OnQuestStatusChange;
+
+	public delegate void OnQuestCompletionHandler(Quest quest);
+	public event OnQuestCompletionHandler OnQuestCompletion;
+
+	public delegate void OnQuestFailureHandler(Quest quest);
+	public event OnQuestFailureHandler OnQuestFailure;
 
     private List<Quest> quests = new List<Quest>();
 
@@ -29,11 +35,25 @@ public class QuestManager : MonoBehaviour {
 		}
 
 		quest.OnStatusChange += (newStatus) => _OnQuestStatusChange(quest, newStatus);
+		quest.OnComplete += () => _OnQuestCompletion(quest);
+		quest.OnFailure += () => _OnQuestFailure(quest);
 	}
 
 	private void _OnQuestStatusChange (Quest quest, QuestStatus newStatus) {
 		if (OnQuestStatusChange != null) {
 			OnQuestStatusChange(quest, newStatus);
+		}
+	}
+
+	private void _OnQuestCompletion(Quest quest) {
+		if (OnQuestCompletion != null) {
+			OnQuestCompletion(quest);
+		}
+	}
+
+	private void _OnQuestFailure(Quest quest) {
+		if (OnQuestFailure != null) {
+			OnQuestFailure(quest);
 		}
 	}
 
@@ -70,7 +90,7 @@ public class QuestManager : MonoBehaviour {
 	}
 
 	private void CheckQuestLocation (Quest quest, Bounds bounds) {
-		if (quest.GetQuestType() == QuestType.multi) {
+		if (quest.GetQuestType() == QuestType.nested) {
 			List<Quest> childQuests = quest.GetChildQuests();
 			foreach(Quest childQuest in childQuests) {
 				if (childQuest.GetStatus() == QuestStatus.inProgress) {
@@ -80,8 +100,7 @@ public class QuestManager : MonoBehaviour {
 			return;
 		}
 
-		bool touching = quest.GetDestination().Intersects(bounds);
-		if (touching) {
+		if (quest.GetDestination().Intersects(bounds)) {
 			quest.CompleteQuest();
 		}
 	}
