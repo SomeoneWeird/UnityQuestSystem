@@ -31,7 +31,7 @@ void OnTriggerEnter (Collider other) {
     Quest quest = new Quest("Get to the destination!", QuestType.destination);
 
     // Here we find our destination, and pass it's coordinates to the quest 
-    quest.SetDestination(GameObject.Find("Destination").GetComponent<BoxCollider>().bounds);
+    quest.SetDestination(GameObject.Find("Destination"));
 
     // Let's add a time limit to this quest, this is completely optional though.
     // 1 minute should be enough time.
@@ -104,7 +104,7 @@ void OnTriggerEnter (Collider other) {
     Quest destinationQuest = new Quest("Go to the field", QuestType.destination);
 
     // Add the location of the Field GameObject as the destination for our first quest
-    destinationQuest.SetDestination(GameObject.Find("Field").GetComponent<BoxCollider>().bounds);
+    destinationQuest.SetDestination(GameObject.Find("Field"));
 
     // Create our second quest
     Quest fetchQuest = new Quest("Find 10 Magic Mushrooms", QuestType.fetch);
@@ -268,11 +268,15 @@ Add a new reward that should be granted upon quest completion.
 
 Returns `List<QuestItem>`
 
-### **Quest#SetDestination(Bounds destination)**
+### **Quest#SetDestination(GameObject destination)**
 
 Only to be used when the quest type is set to `QuestType.destination`.
 
 Sets the destination of the quest.
+
+### **Quest#SetDestination(Bounds destination)**
+
+Like above.
 
 ### **Quest#GetDestination()**
 
@@ -282,10 +286,8 @@ Returns the destination of a quest if one has been set.
 
 **Example:**
 
-The easiest way to get a `Bounds` instance is to get it from a `Collider` on your destination object.
-
 ```
-quest.SetDestination(GameObject.Find("Destination").GetComponent<BoxCollider>().bounds);
+quest.SetDestination(GameObject.Find("Destination"));
 ```
 
 ### **Quest#SetTimeLimit(float seconds)**

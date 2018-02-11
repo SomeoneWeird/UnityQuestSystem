@@ -5,7 +5,7 @@ using UnityEngine;
 using Boxxen.Quests;
 
 public class QuestManager : MonoBehaviour {
-    public delegate void OnNewQuestHandler(Quest quest);
+	public delegate void OnNewQuestHandler(Quest quest);
 	public event OnNewQuestHandler OnNewQuest;
 
 	public delegate void OnQuestStatusChangeHandler(Quest quest, QuestStatus newStatus);
@@ -17,7 +17,7 @@ public class QuestManager : MonoBehaviour {
 	public delegate void OnQuestFailureHandler(Quest quest);
 	public event OnQuestFailureHandler OnQuestFailure;
 
-    private List<Quest> quests = new List<Quest>();
+  private List<Quest> quests = new List<Quest>();
 
 	void Start () {
 		// We need to create a new instance of UnityMainThreadDispatcher
@@ -26,6 +26,7 @@ public class QuestManager : MonoBehaviour {
 			unityMainThreadDispatcherObject = new GameObject("__UnityMainThreadDispatcher");
 			unityMainThreadDispatcherObject.AddComponent<UnityMainThreadDispatcher>();
 		}
+
 	}
 
 	public void AddQuest (Quest quest) {

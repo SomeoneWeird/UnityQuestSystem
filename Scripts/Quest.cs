@@ -113,6 +113,10 @@ namespace Boxxen.Quests {
 			return _rewards;
 		}
 
+		public void SetDestination (GameObject destination) {
+			_destination = destination.GetComponent<Renderer>().bounds;
+		}
+
 		public void SetDestination (Bounds destination) {
 			_destination = destination;
 		}
