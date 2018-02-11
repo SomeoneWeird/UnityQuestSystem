@@ -16,11 +16,16 @@ You can require these nested quests to either be completed in parallel or sequen
 
 Quests can also have optional rewards that you should give to the player once they have completed it.
 
-# Example
+# Examples
+
+## Basic "Destination" Quest
 
 Give a quest to a player that contains a `QuestManager`
 
 ```cs
+using Boxxen.Quests;
+..
+
 void OnTriggerEnter (Collider other) {
     // Create a new destination-based quest
     Quest quest = new Quest("Get to the destination!", QuestType.destination);
@@ -41,11 +46,106 @@ void OnTriggerEnter (Collider other) {
 }
 ```
 
+## Basic "Fetch" Quest
+
+Create a quest where the player needs to find an item with the ID of "Shield"
+
+**QuestGiver.cs:**
+
+```cs
+using Boxxen.Quests;
+..
+
+void OnTriggerEnter (Collider other) {
+    // Create a new quest with the type `QuestType.fetch`
+    Quest quest = new Quest("Find the shield", QuestType.fetch);
+
+    // Generate the item we 
+    QuestItem item = new InventoryItem("Shield");
+
+    quest.AddItemToFetch(item);
+
+    quest.Start();
+
+    other.GetComponent<QuestManager>().AddQuest(quest);
+}
+```
+
+**ItemGiver.cs:**
+
+This script should be attached to something that gives out items.
+
+```cs
+using Boxxen.Quests;
+..
+
+void OnTriggerEnter (Collider other) {
+    // Generate the item we want to give to the user
+    QuestItem item = new InventoryItem("Shield");
+
+    // In this example, we just call QuestManager#ItemFetched, in a real game you would also add it to the player inventory and do other things too.
+    other.GetComponent<QuestManager>().ItemFetched(item);
+}
+```
+
+## Nested destination + fetch quest
+
+This example will create a quest with 2 children quests in it, the first quest will require the user to go to a particular location, and the second quest will require a user to find an item. This is a typical pattern you see in lots of games - "Go to the field and find a mushroom"
+
+```cs
+using Boxxen.Quests;
+..
+
+void OnTriggerEnter (Collider other) {
+    // We need a quest as a 'parent' of the two child quests
+    Quest parentQuest = new Quest("Do this for me..", QuestType.nested);
+
+    // Create our first quest
+    Quest destinationQuest = new Quest("Go to the field", QuestType.destination);
+
+    // Add the location of the Field GameObject as the destination for our first quest
+    destinationQuest.SetDestination(GameObject.Find("Field").GetComponent<BoxCollider>().bounds);
+
+    // Create our second quest
+    Quest fetchQuest = new Quest("Find 10 Magic Mushrooms", QuestType.fetch);
+
+    // Generate the item we need the user to fetch
+    QuestItem mushroom = new InventoryItem("Magic Mushroom");
+
+    // Add the mushroom 10 times to our second quest.
+    for (int i = 0; i < 10; i++) {
+        fetchQuest.AddItemToFetch(mushroom);
+    }
+
+    // Lets add our child quests to our main quest
+    parentQuest.AddQuest(destinationQuest);
+    parentQuest.AddQuest(fetchQuest);
+
+    // The default NestedQuestType of a parent quest is NestedQuestType.sequential
+    // but it is added here to demonstrate that it's possible to change.
+    parentQuest.SetNestedQuestType(NestedQuestType.sequential);
+
+    // Note how we call start on our parent quests, and not each child quest
+    // This ensures that they are started in the correct order dictated by NestedQuestType
+    parentQuest.Start();
+
+    // Find our QuestManager instance
+    QuestManager questManager = other.GetComponent<QuestManager>();
+
+    // We only add our parentQuest to our QuestManager, as our
+    // destinationQuest and fetchQuest are children of parentQuest.
+    questManager.AddQuest(parentQuest);
+
+    // We can ask QuestManager to start tracking the players location.
+    questManager.StartTrackingLocation();
+}
+```
+
 # API
 
-## **QuestReward**
+## **QuestItem**
 
-A basic interface describing a reward.
+A basic interface describing an item.
 Your inventory items should fulfil this interface so you can cast them.
 
 ```
