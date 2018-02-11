@@ -128,7 +128,6 @@ namespace Boxxen.Quests {
 
 		public float GetTimeLimit () {
 			return _timeLimit;
-			
 		}
 
 		public void StopTimer () {
@@ -320,7 +319,7 @@ namespace Boxxen.Quests {
 			}
 		}
 
-		public List<QuestItem> ItemsFetched () {
+		public List<QuestItem> GetItemsFetched () {
 			return _itemsFetched;
 		}
 	}
